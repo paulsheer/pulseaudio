@@ -13,7 +13,7 @@ libwebrtc_util_sources = [
   'webrtc.cc'
 ]
 
-if host_machine.system() == 'darwin'
+if host_machine.system() == 'darwin' or host_machine.system() == 'freebsd'
   ignore_unresolved_symbols_link_args = ['-Wl,-undefined,dynamic_lookup']
 else
   ignore_unresolved_symbols_link_args = ['-Wl,--unresolved-symbols=ignore-in-object-files']
