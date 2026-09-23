@@ -678,12 +678,12 @@ int pa__init(pa_module *m) {
     u = pa_xmalloc(sizeof(struct userdata));
 
     if (record) {
-        result = waveInOpen(&hwi, input_device, &wf, 0, 0, WAVE_FORMAT_DIRECT | WAVE_FORMAT_QUERY);
+        result = waveInOpen(&hwi, input_device, (LPCWAVEFORMATEX)&wf, 0, 0, WAVE_FORMAT_DIRECT | WAVE_FORMAT_QUERY);
         if (result != MMSYSERR_NOERROR) {
             pa_log_warn("Sample spec not supported by WaveIn, falling back to default sample rate.");
             ss.rate = wf.Format.nSamplesPerSec = m->core->default_sample_spec.rate;
         }
-        result = waveInOpen(&hwi, input_device, &wf, (DWORD_PTR) chunk_ready_cb, (DWORD_PTR) u, CALLBACK_FUNCTION);
+        result = waveInOpen(&hwi, input_device, (LPCWAVEFORMATEX)&wf, (DWORD_PTR) chunk_ready_cb, (DWORD_PTR) u, CALLBACK_FUNCTION);
         if (result != MMSYSERR_NOERROR) {
             char errortext[MAXERRORLENGTH];
             pa_log("Failed to open WaveIn.");
@@ -698,12 +698,12 @@ int pa__init(pa_module *m) {
     }
 
     if (playback) {
-        result = waveOutOpen(&hwo, output_device, &wf, 0, 0, WAVE_FORMAT_DIRECT | WAVE_FORMAT_QUERY);
+        result = waveOutOpen(&hwo, output_device, (LPCWAVEFORMATEX)&wf, 0, 0, WAVE_FORMAT_DIRECT | WAVE_FORMAT_QUERY);
         if (result != MMSYSERR_NOERROR) {
             pa_log_warn("Sample spec not supported by WaveOut, falling back to default sample rate.");
             ss.rate = wf.Format.nSamplesPerSec = m->core->default_sample_spec.rate;
         }
-        result = waveOutOpen(&hwo, output_device, &wf, (DWORD_PTR) chunk_done_cb, (DWORD_PTR) u, CALLBACK_FUNCTION);
+        result = waveOutOpen(&hwo, output_device, (LPCWAVEFORMATEX)&wf, (DWORD_PTR) chunk_done_cb, (DWORD_PTR) u, CALLBACK_FUNCTION);
         if (result != MMSYSERR_NOERROR) {
             char errortext[MAXERRORLENGTH];
             pa_log("Failed to open WaveOut.");

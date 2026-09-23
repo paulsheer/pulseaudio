@@ -458,7 +458,11 @@ pa_mainloop *pa_mainloop_new(void) {
     {
         int r;
         WSADATA data;
+#ifdef EMBEDDED
+        if ((r = WSAStartup(MAKEWORD(2, 2), &data))) { // make this the same as ming64x
+#else
         if ((r = WSAStartup(MAKEWORD(2, 0), &data))) {
+#endif
             pa_log_error("ERROR: cannot initialize Winsock2 (%d)", r);
             return NULL;
         }

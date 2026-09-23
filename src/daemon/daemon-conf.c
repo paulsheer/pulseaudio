@@ -70,7 +70,11 @@ static const pa_daemon_conf default_conf = {
     .disallow_exit = false,
     .flat_volumes = false,
     .rescue_streams = true,
+#ifdef EMBEDDED
+    .exit_idle_time = -1,
+#else
     .exit_idle_time = 20,
+#endif
     .scache_idle_time = 20,
     .script_commands = NULL,
     .dl_search_path = NULL,
@@ -95,7 +99,11 @@ static const pa_daemon_conf default_conf = {
     .local_server_type = PA_SERVER_TYPE_UNSET, /* The actual default is _USER, but we have to detect when the user doesn't specify this option. */
 #endif
     .no_cpu_limit = true,
+#ifdef EMBEDDED
+    .disable_shm = true,
+#else
     .disable_shm = false,
+#endif
     .disable_memfd = false,
     .lock_memory = false,
     .deferred_volume = true,

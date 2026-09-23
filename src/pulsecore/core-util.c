@@ -1938,6 +1938,45 @@ fail:
     return NULL;
 }
 
+#ifdef EMBEDDED
+
+/* Embedded build: configuration files are resolved from exactly two places,
+ * in order: (0) the directory containing ming64x.exe, and (1)
+ * %APPDATA%\Ming64X. No other location is consulted. */
+
+/* Return the basename (final path component) of a config file path. */
+static const char *embedded_config_basename(const char *path) {
+    const char *p, *base = path;
+    for (p = path; *p; p++)
+        if (*p == '/' || *p == '\\')
+            base = p + 1;
+    return base;
+}
+
+/* Fill "path" with candidate location "which" (0 = exe dir, 1 = AppData) for
+ * a config file named "name". Returns 1 on success, 0 if unavailable. */
+static int embedded_config_path(char *path, size_t path_len, const char *name, int which) {
+    if (which == 0) {
+        char dir[MAX_PATH];
+        char *p;
+        if (!GetModuleFileNameA(NULL, dir, sizeof dir))
+            return 0;
+        if (!(p = strrchr(dir, PA_PATH_SEP_CHAR)))
+            return 0;
+        *p = '\0';
+        snprintf(path, path_len, "%s" PA_PATH_SEP "%s", dir, name);
+        return 1;
+    } else {
+        const char *appdata = getenv("APPDATA");
+        if (!appdata || !*appdata)
+            return 0;
+        snprintf(path, path_len, "%s" PA_PATH_SEP "Ming64X" PA_PATH_SEP "%s", appdata, name);
+        return 1;
+    }
+}
+
+#endif
+
 /* Try to open a configuration file. If "env" is specified, open the
  * value of the specified environment variable. Otherwise look for a
  * file "local" in the home directory or a file "global" in global
@@ -1947,6 +1986,27 @@ fail:
 FILE *pa_open_config_file(const char *global, const char *local, const char *env, char **result) {
     const char *fn;
     FILE *f;
+
+#ifdef EMBEDDED
+    {
+        const char *name = embedded_config_basename(global ? global : local);
+        char path[512];
+        int i;
+
+        for (i = 0; i < 2; i++) {
+            if (!embedded_config_path(path, sizeof path, name, i))
+                continue;
+            if ((f = pa_fopen_cloexec(path, "r"))) {
+                if (result)
+                    *result = pa_xstrdup(path);
+                return f;
+            }
+        }
+
+        errno = ENOENT;
+        return NULL;
+    }
+#endif
 
     if (env && (fn = getenv(env))) {
         if ((f = pa_fopen_cloexec(fn, "r"))) {
@@ -2026,6 +2086,24 @@ FILE *pa_open_config_file(const char *global, const char *local, const char *env
 
 char *pa_find_config_file(const char *global, const char *local, const char *env) {
     const char *fn;
+
+#ifdef EMBEDDED
+    {
+        const char *name = embedded_config_basename(global ? global : local);
+        char path[512];
+        int i;
+
+        for (i = 0; i < 2; i++) {
+            if (!embedded_config_path(path, sizeof path, name, i))
+                continue;
+            if (access(path, R_OK) == 0)
+                return pa_xstrdup(path);
+        }
+
+        errno = ENOENT;
+        return NULL;
+    }
+#endif
 
     if (env && (fn = getenv(env))) {
         if (access(fn, R_OK) == 0)

@@ -495,6 +495,7 @@ DWORD svc_callback(DWORD ctl, DWORD evt, LPVOID data, LPVOID userdata) {
     return ERROR_CALL_NOT_IMPLEMENTED;
 }
 
+#ifndef EMBEDDED
 int main(int p_argc, char *p_argv[]) {
     argc = p_argc;
     argv = p_argv;
@@ -505,6 +506,72 @@ int main(int p_argc, char *p_argv[]) {
     is_svc = false;
     return real_main(0, NULL);
 }
+#endif
+
+#ifdef EMBEDDED
+
+#include "embedded.h"
+#include <pulsecore/semaphore.h>
+#include <pulsecore/thread.h>
+
+static pa_semaphore *embedded_ready = NULL;
+static bool embedded_done = false;
+static bool embedded_ok = false;
+static char *embedded_error = NULL;
+static size_t embedded_error_len = 0;
+
+static void embedded_thread_func(void *userdata) {
+    real_main(0, NULL);
+
+    /* real_main() signals through the finish: path; this is only a safety net
+     * so the caller can never block forever. */
+    if (!embedded_done) {
+        embedded_ok = false;
+        embedded_done = true;
+        pa_semaphore_post(embedded_ready);
+    }
+}
+
+int start_pulseaudio_thread(int p_argc, char *p_argv[], char *error, size_t error_len) {
+    pa_thread *t;
+
+    if (embedded_ready)
+        return -1;
+
+    argc = p_argc;
+    argv = p_argv;
+    is_svc = false;
+
+    embedded_error = error;
+    embedded_error_len = error_len;
+    if (error && error_len)
+        error[0] = 0;
+
+    embedded_ok = false;
+    embedded_done = false;
+    embedded_ready = pa_semaphore_new(0);
+
+    if (!(t = pa_thread_new("pulseaudio", embedded_thread_func, NULL))) {
+        pa_semaphore_free(embedded_ready);
+        embedded_ready = NULL;
+        if (error && error_len)
+            pa_snprintf(error, error_len, "Failed to create pulseaudio thread");
+        return -1;
+    }
+
+    pa_thread_free_nojoin(t);
+
+    pa_semaphore_wait(embedded_ready);
+
+    if (embedded_ok)
+        return 0;
+
+    pa_semaphore_free(embedded_ready);
+    embedded_ready = NULL;
+    return -1;
+}
+
+#endif
 
 static int real_main(int s_argc, char *s_argv[]) {
 #else
@@ -701,7 +768,11 @@ int main(int argc, char *argv[]) {
 #ifdef OS_IS_WIN32
     {
         WSADATA data;
+#ifdef EMBEDDED
+        WSAStartup(MAKEWORD(2, 2), &data); // make this the same as ming64x
+#else
         WSAStartup(MAKEWORD(2, 0), &data);
+#endif
     }
 #endif
 
@@ -1317,6 +1388,14 @@ int main(int argc, char *argv[]) {
 
     pa_log_info("Daemon startup complete.");
 
+#ifdef EMBEDDED
+    if (embedded_ready && !embedded_done) {
+        embedded_ok = true;
+        embedded_done = true;
+        pa_semaphore_post(embedded_ready);
+    }
+#endif
+
 #ifdef HAVE_SYSTEMD_DAEMON
     sd_notify(0, "READY=1");
 #endif
@@ -1356,6 +1435,23 @@ int main(int argc, char *argv[]) {
 #endif
 
 finish:
+#ifdef EMBEDDED
+    if (embedded_ready && !embedded_done) {
+        const char *msg = pa_log_get_embedded_last();
+
+        embedded_ok = false;
+        embedded_done = true;
+
+        if (embedded_error && embedded_error_len) {
+            if (msg && *msg)
+                pa_snprintf(embedded_error, embedded_error_len, "%s", msg);
+            else
+                pa_snprintf(embedded_error, embedded_error_len, "PulseAudio daemon startup failed (exit code %d)", retval);
+        }
+
+        pa_semaphore_post(embedded_ready);
+    }
+#endif
 #ifdef HAVE_DBUS
     if (server_bus)
         pa_dbus_connection_unref(server_bus);

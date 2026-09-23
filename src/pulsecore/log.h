@@ -152,4 +152,10 @@ LOG_FUNC(error, PA_LOG_ERROR)
 
 bool pa_log_ratelimit(pa_log_level_t level);
 
+#ifdef EMBEDDED
+/* For the embedded entry point: returns the most recent ERROR/WARN log
+ * message so that a failed daemon startup can be reported to the caller. */
+const char *pa_log_get_embedded_last(void);
+#endif
+
 #endif

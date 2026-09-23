@@ -37,7 +37,15 @@ int pa_detect_fork(void) {
      * however have to deal with this cleanly, so we try to detect the
      * forks making sure all our calls fail cleanly after the fork. */
 
+#ifdef EMBEDDED
+    /* MinGW-w64 x86_64 defines pid_t as __int64 (8 bytes) while pa_atomic_t,
+     * on the __sync/__atomic builtin path, is only int-sized. fork detection
+     * is vestigial on Windows and only ever stores (int)getpid(), so int is
+     * sufficient here. */
+    pa_assert_cc(sizeof(pa_atomic_t) >= sizeof(int));
+#else
     pa_assert_cc(sizeof(pa_atomic_t) >= sizeof(pid_t));
+#endif
 
     for (;;) {
         pid_t stored_pid = (pid_t) pa_atomic_load(&pid);

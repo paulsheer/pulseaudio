@@ -94,6 +94,14 @@ static bool no_rate_limit = false;
 static int log_fd = -1;
 static int write_type = 0;
 
+#ifdef EMBEDDED
+static char embedded_last_log[512] = "";
+
+const char *pa_log_get_embedded_last(void) {
+    return embedded_last_log;
+}
+#endif
+
 #ifdef HAVE_SYSLOG_H
 static const int level_to_syslog[] = {
     [PA_LOG_ERROR] = LOG_ERR,
@@ -404,6 +412,11 @@ void pa_log_levelv_meta(
     }
 
     pa_vsnprintf(text, sizeof(text), format, ap);
+
+#ifdef EMBEDDED
+    if (level <= PA_LOG_WARN)
+        pa_snprintf(embedded_last_log, sizeof(embedded_last_log), "%s", text);
+#endif
 
     if ((_flags & PA_LOG_PRINT_META) && file && line > 0 && func)
         pa_snprintf(location, sizeof(location), "[%s][%s:%i %s()] ",
