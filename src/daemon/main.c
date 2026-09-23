@@ -559,8 +559,6 @@ int start_pulseaudio_thread(int p_argc, char *p_argv[], char *error, size_t erro
         return -1;
     }
 
-    pa_thread_free_nojoin(t);
-
     pa_semaphore_wait(embedded_ready);
 
     if (embedded_ok)
@@ -841,7 +839,7 @@ int main(int argc, char *argv[]) {
             if (pa_pid_file_check_running(&pid, "pulseaudio") < 0)
                 pa_log_info("Daemon not running");
             else {
-                pa_log_info("Daemon running as PID %u", pid);
+                pa_log_info("Daemon running as PID %u", (unsigned int) pid);
                 retval = 0;
             }
 
