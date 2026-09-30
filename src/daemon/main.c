@@ -520,6 +520,7 @@ static bool embedded_ok = false;
 static char *embedded_error = NULL;
 static size_t embedded_error_len = 0;
 static pa_mainloop *embedded_mainloop = NULL;
+static pa_thread *embedded_thread = NULL;
 
 static void embedded_thread_func(void *userdata) {
     real_main(0, NULL);
@@ -560,6 +561,8 @@ int start_pulseaudio_thread(int p_argc, char *p_argv[], char *error, size_t erro
         return -1;
     }
 
+    embedded_thread = t;
+
     pa_semaphore_wait(embedded_ready);
 
     if (embedded_ok)
@@ -574,6 +577,11 @@ void stop_pulseaudio_thread(void) {
     if (embedded_mainloop) {
         pa_mainloop_quit(embedded_mainloop, 0);
         embedded_mainloop = NULL;
+    }
+
+    if (embedded_thread) {
+        pa_thread_free(embedded_thread);
+        embedded_thread = NULL;
     }
 }
 
