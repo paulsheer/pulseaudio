@@ -39,6 +39,9 @@ typedef enum pa_log_target_type {
     PA_LOG_NULL,        /* to /dev/null */
     PA_LOG_FILE,        /* to a user specified file */
     PA_LOG_NEWFILE,     /* with an automatic suffix to avoid overwriting anything */
+#ifdef EMBEDDED
+    PA_LOG_CALLBACK,    /* to a caller-supplied callback */
+#endif
 } pa_log_target_type_t;
 
 typedef enum pa_log_level {
@@ -156,6 +159,10 @@ bool pa_log_ratelimit(pa_log_level_t level);
 /* For the embedded entry point: returns the most recent ERROR/WARN log
  * message so that a failed daemon startup can be reported to the caller. */
 const char *pa_log_get_embedded_last(void);
+
+/* Route log output to a caller-supplied callback (target PA_LOG_CALLBACK). */
+typedef void (*pa_log_function_cb)(const char *text);
+void pa_set_external_logging(pa_log_function_cb callback);
 #endif
 
 #endif

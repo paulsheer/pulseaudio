@@ -354,7 +354,9 @@ again:
     pa_assert_se(pa_close(fd) >= 0);
 }
 #else
+#ifndef EMBEDDED
     pa_log_warn("Secure directory creation not supported on this platform.");
+#endif
 #endif
 
     return 0;

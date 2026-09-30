@@ -519,6 +519,7 @@ static bool embedded_done = false;
 static bool embedded_ok = false;
 static char *embedded_error = NULL;
 static size_t embedded_error_len = 0;
+static pa_mainloop *embedded_mainloop = NULL;
 
 static void embedded_thread_func(void *userdata) {
     real_main(0, NULL);
@@ -567,6 +568,13 @@ int start_pulseaudio_thread(int p_argc, char *p_argv[], char *error, size_t erro
     pa_semaphore_free(embedded_ready);
     embedded_ready = NULL;
     return -1;
+}
+
+void stop_pulseaudio_thread(void) {
+    if (embedded_mainloop) {
+        pa_mainloop_quit(embedded_mainloop, 0);
+        embedded_mainloop = NULL;
+    }
 }
 
 #endif
@@ -1122,8 +1130,10 @@ int main(int argc, char *argv[]) {
     }
 
     pa_set_env_and_record("PULSE_INTERNAL", "1");
+#ifndef EMBEDDED
     pa_assert_se(chdir("/") == 0);
     umask(0077);
+#endif
 
 #ifdef HAVE_SYS_RESOURCE_H
     set_all_rlimits(conf);
@@ -1255,6 +1265,9 @@ int main(int argc, char *argv[]) {
     pa_memtrap_install();
 
     pa_assert_se(mainloop = pa_mainloop_new());
+#ifdef EMBEDDED
+    embedded_mainloop = mainloop;
+#endif
 
     if (!(c = pa_core_new(pa_mainloop_get_api(mainloop), !conf->disable_shm,
                           !conf->disable_shm && !conf->disable_memfd && pa_memfd_is_locally_supported(),

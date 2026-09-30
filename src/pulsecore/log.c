@@ -100,6 +100,14 @@ static char embedded_last_log[512] = "";
 const char *pa_log_get_embedded_last(void) {
     return embedded_last_log;
 }
+
+static pa_log_function_cb external_log_cb = NULL;
+
+void pa_set_external_logging(pa_log_function_cb callback) {
+    external_log_cb = callback;
+    target_override = PA_LOG_CALLBACK;
+    target_override_set = true;
+}
 #endif
 
 #ifdef HAVE_SYSLOG_H
@@ -167,6 +175,9 @@ int pa_log_set_target(pa_log_target *t) {
         case PA_LOG_JOURNAL:
 #endif
         case PA_LOG_NULL:
+#ifdef EMBEDDED
+        case PA_LOG_CALLBACK:
+#endif
             break;
         case PA_LOG_FILE:
             if ((fd = pa_open_cloexec(t->file, O_WRONLY | O_TRUNC | O_CREAT, S_IRUSR | S_IWUSR)) < 0) {
@@ -576,6 +587,17 @@ void pa_log_levelv_meta(
 
                 break;
             }
+#ifdef EMBEDDED
+            case PA_LOG_CALLBACK: {
+                char line[16 * 1024];
+
+                if (external_log_cb) {
+                    pa_snprintf(line, sizeof(line), "%c: %s", level_to_char[level], t);
+                    external_log_cb(line);
+                }
+                break;
+            }
+#endif
             case PA_LOG_NULL:
             default:
                 break;
@@ -692,6 +714,11 @@ char *pa_log_target_to_string(const pa_log_target *t) {
         case PA_LOG_NEWFILE:
             string = pa_sprintf_malloc("newfile:%s", t->file);
             break;
+#ifdef EMBEDDED
+        case PA_LOG_CALLBACK:
+            string = pa_xstrdup("callback");
+            break;
+#endif
     }
 
     return string;
