@@ -1317,6 +1317,7 @@ int main(int argc, char *argv[]) {
 
     pa_cpu_init(&c->cpu_info);
 
+#ifndef EMBEDDED
     pa_assert_se(pa_signal_init(pa_mainloop_get_api(mainloop)) == 0);
     pa_signal_new(SIGINT, signal_callback, c);
     pa_signal_new(SIGTERM, signal_callback, c);
@@ -1328,6 +1329,7 @@ int main(int argc, char *argv[]) {
 #endif
 #ifdef SIGHUP
     pa_signal_new(SIGHUP, signal_callback, c);
+#endif
 #endif
 
     if (!conf->no_cpu_limit)
@@ -1500,7 +1502,9 @@ finish:
     if (!conf->no_cpu_limit)
         pa_cpu_limit_done();
 
+#ifndef EMBEDDED
     pa_signal_done();
+#endif
 
 #ifdef HAVE_FORK
     /* If we have daemon_pipe[1] still open, this means we've failed after
