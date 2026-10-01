@@ -43,6 +43,10 @@ char *pa_get_fqdn(char *s, size_t l);
 /** Return the home directory of the current user */
 char *pa_get_home_dir(char *s, size_t l);
 
+/** Set the home directory explicitly. When set, this overrides the HOME and
+ * USERPROFILE environment variables in pa_get_home_dir(). */
+void pa_set_home_dir(const char *dir);
+
 /** Return the binary file name of the current process. This is not
  * supported on all architectures, in which case NULL is returned. */
 char *pa_get_binary_name(char *s, size_t l);

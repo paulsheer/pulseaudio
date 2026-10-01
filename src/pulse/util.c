@@ -165,6 +165,13 @@ char *pa_get_host_name(char *s, size_t l) {
     return s;
 }
 
+static char *pa_home_dir = NULL;
+
+void pa_set_home_dir(const char *dir) {
+    pa_xfree(pa_home_dir);
+    pa_home_dir = pa_xstrdup(dir);
+}
+
 char *pa_get_home_dir(char *s, size_t l) {
     char *e;
     char *dir = NULL;
@@ -174,6 +181,11 @@ char *pa_get_home_dir(char *s, size_t l) {
 
     pa_assert(s);
     pa_assert(l > 0);
+
+    if (pa_home_dir) {
+        dir = pa_strlcpy(s, pa_home_dir, l);
+        goto finish;
+    }
 
     if ((e = getenv("HOME"))) {
         dir = pa_strlcpy(s, e, l);
